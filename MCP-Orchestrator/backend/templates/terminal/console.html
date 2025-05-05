@@ -1,0 +1,448 @@
+{% extends 'base.html' %}
+
+{% block title %}Terminal - {{ endpoint.name }} - MCP Orchestrator{% endblock %}
+
+{% block header %}SSH Terminal - {{ endpoint.name }}{% endblock %}
+
+{% block extra_css %}
+<!-- xterm.js styles -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.1.0/css/xterm.min.css" />
+<style>
+    /* Custom terminal styles */
+    .terminal-actions {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 10;
+    }
+    
+    .xterm {
+        height: 100%;
+        width: 100%;
+        padding: 10px;
+    }
+    
+    [x-cloak] { display: none !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
+    <div class="px-4 py-5 sm:px-6 flex justify-between items-center">
+        <div>
+            <h3 class="text-lg leading-6 font-medium text-gray-900">
+                Endpoint Information
+            </h3>
+            <p class="mt-1 max-w-2xl text-sm text-gray-500">
+                Details about the remote server you're connecting to.
+            </p>
+        </div>
+        <div class="flex">
+            <a href="{% url 'admin:endpoints_endpoint_change' endpoint.id %}" class="mr-2 inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                <svg class="-ml-0.5 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                </svg>
+                Edit
+            </a>
+            <button 
+                id="test-connection-btn"
+                class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                hx-post="{% url 'endpoint-test-connection' endpoint.id %}"
+                hx-trigger="click"
+                hx-swap="outerHTML"
+                hx-target="#connection-status"
+            >
+                <svg class="-ml-0.5 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                Test Connection
+            </button>
+        </div>
+    </div>
+    <div class="border-t border-gray-200">
+        <dl>
+            <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                <dt class="text-sm font-medium text-gray-500">Name</dt>
+                <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{{ endpoint.name }}</dd>
+            </div>
+            <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                <dt class="text-sm font-medium text-gray-500">Hostname / IP</dt>
+                <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{{ endpoint.hostname }} ({{ endpoint.ip_address }})</dd>
+            </div>
+            <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                <dt class="text-sm font-medium text-gray-500">Port</dt>
+                <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{{ endpoint.port }}</dd>
+            </div>
+            <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                <dt class="text-sm font-medium text-gray-500">Username</dt>
+                <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{{ endpoint.username }}</dd>
+            </div>
+            <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                <dt class="text-sm font-medium text-gray-500">Authentication</dt>
+                <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{{ endpoint.get_auth_type_display }}</dd>
+            </div>
+            <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                <dt class="text-sm font-medium text-gray-500">Status</dt>
+                <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2" id="connection-status">
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                        {% if endpoint.status == 'online' %}bg-green-100 text-green-800
+                        {% elif endpoint.status == 'offline' %}bg-gray-100 text-gray-800
+                        {% elif endpoint.status == 'unreachable' %}bg-red-100 text-red-800
+                        {% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                        {{ endpoint.get_status_display }}
+                    </span>
+                    {% if endpoint.last_connected %}
+                    <span class="text-xs text-gray-500 ml-2">Last connected: {{ endpoint.last_connected|date:"M d, Y H:i" }}</span>
+                    {% endif %}
+                </dd>
+            </div>
+            {% if endpoint.description %}
+            <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                <dt class="text-sm font-medium text-gray-500">Description</dt>
+                <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{{ endpoint.description }}</dd>
+            </div>
+            {% endif %}
+        </dl>
+    </div>
+</div>
+
+<div class="mb-4">
+    <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
+        SSH Terminal
+    </h3>
+    <p class="mb-4 text-sm text-gray-500">
+        Interactive terminal session to the remote endpoint. Commands and output are logged for security and compliance purposes.
+    </p>
+    
+    <div class="terminal-wrapper relative">
+        {% include "components/terminal.html" with endpoint_id=endpoint.id endpoint_name=endpoint.name hostname=endpoint.hostname port=endpoint.port username=endpoint.username %}
+    </div>
+</div>
+
+<div class="mt-8">
+    <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
+        Recent Sessions
+    </h3>
+    
+    <div class="shadow overflow-hidden border-b border-gray-200 sm:rounded-lg">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Session ID
+                    </th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Started
+                    </th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Duration
+                    </th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                    </th>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Commands
+                    </th>
+                    <th scope="col" class="relative px-6 py-3">
+                        <span class="sr-only">Actions</span>
+                    </th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for session in recent_sessions %}
+                <tr>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {{ session.id|truncatechars:8 }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {{ session.started_at|date:"M d, Y H:i" }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {% if session.duration %}
+                        {{ session.duration }}
+                        {% elif session.is_active %}
+                        <span class="text-green-500">Active</span>
+                        {% else %}
+                        Unknown
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {% if session.is_active %}
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                            Active
+                        </span>
+                        {% else %}
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                            Ended
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {{ session.commands_count }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <a href="{% url 'admin:endpoints_sshsession_change' session.id %}" class="text-indigo-600 hover:text-indigo-900">
+                            Details
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="px-6 py-4 text-center text-sm text-gray-500">
+                        No recent sessions found.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- xterm.js library -->
+<script src="https://cdn.jsdelivr.net/npm/xterm@5.1.0/lib/xterm.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.7.0/lib/xterm-addon-fit.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xterm-addon-web-links@0.8.0/lib/xterm-addon-web-links.min.js"></script>
+
+<script>
+    // Terminal AlpineJS component
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('terminal', (endpointId) => ({
+            endpointId: endpointId,
+            terminal: null,
+            socket: null,
+            connectionStatus: 'Disconnected',
+            showReconnecting: false,
+            reconnectAttempts: 0,
+            maxReconnectAttempts: 5,
+            reconnectTimer: null,
+            heartbeatTimer: null,
+            fullscreen: false,
+            cols: 80,
+            rows: 24,
+            
+            initTerminal() {
+                // Create terminal
+                this.terminal = new Terminal({
+                    cursorBlink: true,
+                    theme: {
+                        background: '#0a0a0a',
+                        foreground: '#f8f8f8'
+                    },
+                    fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+                    fontSize: 14,
+                    scrollback: 5000,
+                    lineHeight: 1.2
+                });
+                
+                // Add fit addon
+                const fitAddon = new FitAddon.FitAddon();
+                this.terminal.loadAddon(fitAddon);
+                
+                // Add web links addon
+                this.terminal.loadAddon(new WebLinksAddon.WebLinksAddon());
+                
+                // Open terminal
+                this.terminal.open(document.getElementById('terminal-container'));
+                
+                // Initialize the terminal size
+                setTimeout(() => {
+                    fitAddon.fit();
+                    this.cols = this.terminal.cols;
+                    this.rows = this.terminal.rows;
+                    
+                    // Send terminal resize event if socket is connected
+                    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+                        this.socket.send(JSON.stringify({
+                            type: 'resize',
+                            cols: this.cols,
+                            rows: this.rows
+                        }));
+                    }
+                }, 100);
+                
+                // Handle terminal resize
+                window.addEventListener('resize', () => {
+                    fitAddon.fit();
+                    this.cols = this.terminal.cols;
+                    this.rows = this.terminal.rows;
+                    
+                    // Send terminal resize event if socket is connected
+                    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+                        this.socket.send(JSON.stringify({
+                            type: 'resize',
+                            cols: this.cols,
+                            rows: this.rows
+                        }));
+                    }
+                });
+                
+                // Handle terminal input
+                this.terminal.onData(data => {
+                    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+                        this.socket.send(JSON.stringify({
+                            type: 'input',
+                            data: data
+                        }));
+                    }
+                });
+                
+                // Connect to WebSocket
+                this.connect();
+                
+                // Handle fullscreen changes
+                this.$watch('fullscreen', (isFullscreen) => {
+                    setTimeout(() => {
+                        fitAddon.fit();
+                        this.cols = this.terminal.cols;
+                        this.rows = this.terminal.rows;
+                        
+                        // Send terminal resize event if socket is connected
+                        if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+                            this.socket.send(JSON.stringify({
+                                type: 'resize',
+                                cols: this.cols,
+                                rows: this.rows
+                            }));
+                        }
+                    }, 100);
+                });
+            },
+            
+            connect() {
+                // Clear any existing connection
+                this.disconnect();
+                
+                // Create WebSocket connection
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = `${protocol}//${window.location.host}/ws/terminal/${this.endpointId}/`;
+                
+                this.socket = new WebSocket(wsUrl);
+                
+                // Connection opened
+                this.socket.addEventListener('open', (event) => {
+                    this.connectionStatus = 'Connected';
+                    this.showReconnecting = false;
+                    this.reconnectAttempts = 0;
+                    
+                    // Send initial terminal size
+                    this.socket.send(JSON.stringify({
+                        type: 'resize',
+                        cols: this.cols,
+                        rows: this.rows
+                    }));
+                    
+                    // Start heartbeat
+                    this.startHeartbeat();
+                    
+                    // Clear terminal and display welcome message
+                    this.terminal.clear();
+                    this.terminal.writeln('Connected to SSH server.');
+                    this.terminal.writeln('');
+                });
+                
+                // Listen for messages
+                this.socket.addEventListener('message', (event) => {
+                    const data = JSON.parse(event.data);
+                    
+                    if (data.type === 'output') {
+                        // Display terminal output
+                        this.terminal.write(data.data);
+                    } else if (data.type === 'error') {
+                        // Display error message
+                        this.terminal.writeln(`\r\n\x1b[31mError: ${data.message}\x1b[0m\r\n`);
+                        this.connectionStatus = 'Error';
+                    } else if (data.type === 'heartbeat') {
+                        // Heartbeat response, nothing to do
+                    }
+                });
+                
+                // Connection closed
+                this.socket.addEventListener('close', (event) => {
+                    this.stopHeartbeat();
+                    
+                    // Handle clean close vs error
+                    if (event.wasClean) {
+                        this.connectionStatus = 'Disconnected';
+                        this.terminal.writeln('\r\n\x1b[33mConnection closed.\x1b[0m');
+                    } else {
+                        this.connectionStatus = 'Connection Lost';
+                        this.terminal.writeln('\r\n\x1b[31mConnection lost. Attempting to reconnect...\x1b[0m');
+                        
+                        // Attempt to reconnect
+                        this.attemptReconnect();
+                    }
+                });
+                
+                // Connection error
+                this.socket.addEventListener('error', (event) => {
+                    this.connectionStatus = 'Error';
+                    console.error('WebSocket error:', event);
+                });
+            },
+            
+            disconnect() {
+                this.stopHeartbeat();
+                
+                if (this.reconnectTimer) {
+                    clearTimeout(this.reconnectTimer);
+                    this.reconnectTimer = null;
+                }
+                
+                if (this.socket) {
+                    // Close the socket if it's open
+                    if (this.socket.readyState === WebSocket.OPEN || 
+                        this.socket.readyState === WebSocket.CONNECTING) {
+                        this.socket.close();
+                    }
+                    this.socket = null;
+                }
+                
+                this.connectionStatus = 'Disconnected';
+                this.showReconnecting = false;
+            },
+            
+            attemptReconnect() {
+                if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+                    this.showReconnecting = false;
+                    this.connectionStatus = 'Reconnect Failed';
+                    this.terminal.writeln('\r\n\x1b[31mReconnection failed. Please reload the page to try again.\x1b[0m');
+                    return;
+                }
+                
+                this.reconnectAttempts++;
+                this.showReconnecting = true;
+                this.connectionStatus = `Reconnecting (${this.reconnectAttempts}/${this.maxReconnectAttempts})`;
+                
+                // Exponential backoff for reconnect: 1s, 2s, 4s, 8s, 16s
+                const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts - 1), 16000);
+                
+                this.reconnectTimer = setTimeout(() => {
+                    this.terminal.writeln(`\r\n\x1b[33mAttempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...\x1b[0m`);
+                    this.connect();
+                }, delay);
+            },
+            
+            startHeartbeat() {
+                // Send heartbeat every 30 seconds to keep connection alive
+                this.heartbeatTimer = setInterval(() => {
+                    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+                        this.socket.send(JSON.stringify({
+                            type: 'heartbeat',
+                            timestamp: Date.now()
+                        }));
+                    }
+                }, 30000);
+            },
+            
+            stopHeartbeat() {
+                if (this.heartbeatTimer) {
+                    clearInterval(this.heartbeatTimer);
+                    this.heartbeatTimer = null;
+                }
+            }
+        }));
+    });
+</script>
+{% endblock %}

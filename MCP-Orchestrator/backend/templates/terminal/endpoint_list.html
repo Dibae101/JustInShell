@@ -1,0 +1,202 @@
+{% extends 'base.html' %}
+
+{% block title %}Endpoints - MCP Orchestrator{% endblock %}
+
+{% block header %}SSH Endpoints{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <div class="flex flex-col md:flex-row md:justify-between md:items-center space-y-3 md:space-y-0">
+        <!-- Search form -->
+        <form method="GET" action="{% url 'endpoint-list' %}" class="flex">
+            <div class="relative rounded-md shadow-sm flex-grow">
+                <input type="text" name="q" value="{{ query }}" class="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-4 pr-10 py-2 sm:text-sm border-gray-300 rounded-md" placeholder="Search endpoints...">
+                <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                    <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </div>
+            </div>
+            <button type="submit" class="ml-3 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                Search
+            </button>
+        </form>
+        
+        <!-- Action buttons -->
+        <div class="flex justify-end space-x-3">
+            <a href="{% url 'admin:endpoints_endpoint_add' %}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                <svg class="-ml-1 mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Add Endpoint
+            </a>
+            <a href="{% url 'admin:endpoints_endpointgroup_changelist' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                Manage Groups
+            </a>
+        </div>
+    </div>
+    
+    <!-- Filters -->
+    <div class="mt-4 bg-white shadow overflow-hidden sm:rounded-md p-4">
+        <h3 class="text-lg leading-6 font-medium text-gray-900 mb-3">Filters</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- Status filter -->
+            <div>
+                <label for="status" class="block text-sm font-medium text-gray-700">Status</label>
+                <select id="status" name="status" 
+                        class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                        hx-get="{% url 'endpoint-list' %}"
+                        hx-include="[name='q'],[name='group'],[name='tag'],[name='order_by']"
+                        hx-target="#endpoint-list-container"
+                        hx-swap="innerHTML"
+                        hx-trigger="change">
+                    <option value="">All Statuses</option>
+                    <option value="online" {% if status == 'online' %}selected{% endif %}>Online</option>
+                    <option value="offline" {% if status == 'offline' %}selected{% endif %}>Offline</option>
+                    <option value="unreachable" {% if status == 'unreachable' %}selected{% endif %}>Unreachable</option>
+                    <option value="maintenance" {% if status == 'maintenance' %}selected{% endif %}>Maintenance</option>
+                </select>
+            </div>
+            
+            <!-- Group filter -->
+            <div>
+                <label for="group" class="block text-sm font-medium text-gray-700">Group</label>
+                <select id="group" name="group" 
+                        class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                        hx-get="{% url 'endpoint-list' %}"
+                        hx-include="[name='q'],[name='status'],[name='tag'],[name='order_by']"
+                        hx-target="#endpoint-list-container"
+                        hx-swap="innerHTML"
+                        hx-trigger="change">
+                    <option value="">All Groups</option>
+                    {% for group_item in all_groups %}
+                    <option value="{{ group_item.id }}" {% if group == group_item.id|stringformat:"s" %}selected{% endif %}>{{ group_item.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <!-- Sort options -->
+            <div>
+                <label for="order_by" class="block text-sm font-medium text-gray-700">Sort By</label>
+                <select id="order_by" name="order_by" 
+                        class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                        hx-get="{% url 'endpoint-list' %}"
+                        hx-include="[name='q'],[name='status'],[name='group'],[name='tag']"
+                        hx-target="#endpoint-list-container"
+                        hx-swap="innerHTML"
+                        hx-trigger="change">
+                    <option value="name" {% if order_by == 'name' %}selected{% endif %}>Name (A-Z)</option>
+                    <option value="-name" {% if order_by == '-name' %}selected{% endif %}>Name (Z-A)</option>
+                    <option value="status" {% if order_by == 'status' %}selected{% endif %}>Status</option>
+                    <option value="-last_connected" {% if order_by == '-last_connected' %}selected{% endif %}>Last Connected (Newest)</option>
+                    <option value="last_connected" {% if order_by == 'last_connected' %}selected{% endif %}>Last Connected (Oldest)</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Endpoint List -->
+<div id="endpoint-list-container">
+    <div class="bg-white shadow overflow-hidden sm:rounded-md">
+        <ul class="divide-y divide-gray-200">
+            {% for endpoint in endpoints %}
+            <li>
+                <a href="{% url 'terminal-view' endpoint.id %}" class="block hover:bg-gray-50">
+                    <div class="px-4 py-4 sm:px-6">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0">
+                                    {% if endpoint.status == 'online' %}
+                                    <span class="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
+                                        <svg class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                    </span>
+                                    {% elif endpoint.status == 'offline' %}
+                                    <span class="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center">
+                                        <svg class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </span>
+                                    {% elif endpoint.status == 'unreachable' %}
+                                    <span class="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center">
+                                        <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                        </svg>
+                                    </span>
+                                    {% else %}
+                                    <span class="h-10 w-10 rounded-full bg-yellow-100 flex items-center justify-center">
+                                        <svg class="h-6 w-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </span>
+                                    {% endif %}
+                                </div>
+                                <div class="ml-4">
+                                    <div class="text-sm font-medium text-indigo-600">{{ endpoint.name }}</div>
+                                    <div class="text-sm text-gray-500">{{ endpoint.hostname }} ({{ endpoint.ip_address }}:{{ endpoint.port }})</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="mr-4 flex flex-col items-end text-sm text-gray-500">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                        {% if endpoint.status == 'online' %}bg-green-100 text-green-800
+                                        {% elif endpoint.status == 'offline' %}bg-gray-100 text-gray-800
+                                        {% elif endpoint.status == 'unreachable' %}bg-red-100 text-red-800
+                                        {% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                                        {{ endpoint.get_status_display }}
+                                    </span>
+                                    {% if endpoint.last_connected %}
+                                    <span class="text-xs mt-1">Last connected: {{ endpoint.last_connected|date:"M d, Y H:i" }}</span>
+                                    {% endif %}
+                                </div>
+                                <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="mt-2 sm:flex sm:justify-between">
+                            <div class="sm:flex">
+                                <div class="flex items-center text-sm text-gray-500">
+                                    <svg class="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                    </svg>
+                                    {{ endpoint.username }}
+                                </div>
+                                <div class="mt-2 flex items-center text-sm text-gray-500 sm:mt-0 sm:ml-6">
+                                    <svg class="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                    Auth: {{ endpoint.get_auth_type_display }}
+                                </div>
+                            </div>
+                            <div class="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
+                                {% if endpoint.groups.exists %}
+                                <div class="flex space-x-1">
+                                    {% for group in endpoint.groups.all %}
+                                    <span class="px-2 py-1 text-xs rounded bg-gray-100">{{ group.name }}</span>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                {% if endpoint.tags.exists %}
+                                <div class="ml-2 flex space-x-1">
+                                    {% for tag in endpoint.tags.all %}
+                                    <span class="px-2 py-1 text-xs rounded" style="background-color: {{ tag.color }}20; color: {{ tag.color }};">{{ tag.name }}</span>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            </li>
+            {% empty %}
+            <li class="px-4 py-4 sm:px-6 text-center text-gray-500">
+                No endpoints found. <a href="{% url 'admin:endpoints_endpoint_add' %}" class="text-indigo-600 hover:text-indigo-900">Add an endpoint</a> to get started.
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endblock %}

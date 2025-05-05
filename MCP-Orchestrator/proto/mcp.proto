@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package mcp;
+
+service MCPAgent {
+  rpc Register (RegisterRequest) returns (RegisterResponse);
+  rpc SendHeartbeat (HeartbeatRequest) returns (HeartbeatResponse);
+  rpc ReportMetrics (MetricsRequest) returns (MetricsResponse);
+  rpc ExecuteCommand (CommandRequest) returns (CommandResponse);
+}
+
+message RegisterRequest {
+  string hostname = 1;
+  string ip_address = 2;
+  string agent_version = 3;
+  map<string, string> system_info = 4;
+}
+
+message RegisterResponse {
+  string agent_id = 1;
+  bool success = 2;
+  string message = 3;
+}
+
+message HeartbeatRequest {
+  string agent_id = 1;
+  int64 timestamp = 2;
+}
+
+message HeartbeatResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message MetricsRequest {
+  string agent_id = 1;
+  double cpu_usage = 2;
+  double memory_usage = 3;
+  double disk_usage = 4;
+  map<string, double> custom_metrics = 5;
+}
+
+message MetricsResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message CommandRequest {
+  string agent_id = 1;
+  string command_id = 2;
+  string command = 3;
+  int32 timeout = 4;
+}
+
+message CommandResponse {
+  string command_id = 1;
+  bool success = 2;
+  string output = 3;
+  int32 exit_code = 4;
+  string error = 5;
+}

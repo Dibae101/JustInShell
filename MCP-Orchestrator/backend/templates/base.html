@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}MCP Orchestrator{% endblock %}</title>
+    <!-- Tailwind CSS via CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <!-- AlpineJS for interactive UI -->
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.12.0/dist/cdn.min.js" defer></script>
+    <!-- HTMX for dynamic content -->
+    <script src="https://unpkg.com/htmx.org@1.9.2"></script>
+    <!-- Any additional styles -->
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="flex h-screen">
+        <!-- Sidebar -->
+        <aside class="bg-gray-800 text-white w-64 flex-shrink-0 hidden md:block">
+            {% include "components/sidebar.html" %}
+        </aside>
+        
+        <!-- Mobile menu button -->
+        <div class="md:hidden p-4 absolute top-0 left-0 z-20">
+            <button 
+                class="text-gray-500 hover:text-gray-700 focus:outline-none"
+                @click="sidebarOpen = !sidebarOpen"
+                x-data="{ sidebarOpen: false }"
+                x-init="$watch('sidebarOpen', value => {
+                    if (value) {
+                        document.getElementById('mobile-sidebar').classList.remove('-translate-x-full');
+                    } else {
+                        document.getElementById('mobile-sidebar').classList.add('-translate-x-full');
+                    }
+                })">
+                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            </button>
+        </div>
+        
+        <!-- Mobile sidebar -->
+        <div id="mobile-sidebar" class="fixed inset-y-0 left-0 transform -translate-x-full md:hidden z-10 w-64 bg-gray-800 text-white transition duration-200 ease-in-out">
+            {% include "components/sidebar.html" %}
+        </div>
+        
+        <!-- Main content -->
+        <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100">
+            <!-- Header -->
+            <header class="bg-white shadow">
+                <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
+                    <h1 class="text-2xl font-bold text-gray-900">
+                        {% block header %}MCP Orchestrator{% endblock %}
+                    </h1>
+                    <div class="flex items-center">
+                        {% if user.is_authenticated %}
+                        <span class="mr-4 text-sm text-gray-600">{{ user.username }}</span>
+                        <a href="{% url 'admin:logout' %}" class="text-sm text-red-600 hover:text-red-800">Logout</a>
+                        {% else %}
+                        <a href="{% url 'admin:login' %}" class="text-sm text-blue-600 hover:text-blue-800">Login</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </header>
+            
+            <!-- Content -->
+            <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+                {% if messages %}
+                <div class="mb-4">
+                    {% for message in messages %}
+                    <div class="p-4 mb-2 {% if message.tags == 'error' %}bg-red-100 border-l-4 border-red-500 text-red-700{% elif message.tags == 'success' %}bg-green-100 border-l-4 border-green-500 text-green-700{% else %}bg-blue-100 border-l-4 border-blue-500 text-blue-700{% endif %}">
+                        {{ message }}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+    
+    <!-- Global JS -->
+    <script>
+        // Any global JavaScript can go here
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

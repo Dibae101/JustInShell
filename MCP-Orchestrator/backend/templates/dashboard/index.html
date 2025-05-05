@@ -1,0 +1,217 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - MCP Orchestrator{% endblock %}
+
+{% block header %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <!-- SSH Endpoints Card -->
+    <div class="bg-white overflow-hidden shadow rounded-lg">
+        <div class="p-5 bg-indigo-600">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 bg-white p-3 rounded-md">
+                    <svg class="h-8 w-8 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2" />
+                    </svg>
+                </div>
+                <div class="ml-5 w-0 flex-1">
+                    <dt class="text-lg font-medium text-white truncate">
+                        SSH Endpoints
+                    </dt>
+                    <dd class="flex items-baseline">
+                        <div class="text-2xl font-semibold text-white">
+                            {{ endpoints_count }}
+                        </div>
+                        <div class="ml-2 flex items-baseline text-sm font-semibold text-indigo-100">
+                            <span class="bg-white text-indigo-800 px-2 py-1 rounded-full text-xs">
+                                {{ online_endpoints_count }} Online
+                            </span>
+                        </div>
+                    </dd>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white px-5 py-3 flex justify-between">
+            <a href="{% url 'endpoint-list' %}" class="text-sm font-medium text-indigo-600 hover:text-indigo-900 truncate">
+                View all endpoints
+            </a>
+            <a href="{% url 'admin:endpoints_endpoint_add' %}" class="text-sm font-medium text-indigo-600 hover:text-indigo-900 truncate">
+                Add new
+            </a>
+        </div>
+    </div>
+
+    <!-- SSH Sessions Card -->
+    <div class="bg-white overflow-hidden shadow rounded-lg">
+        <div class="p-5 bg-green-600">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 bg-white p-3 rounded-md">
+                    <svg class="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                </div>
+                <div class="ml-5 w-0 flex-1">
+                    <dt class="text-lg font-medium text-white truncate">
+                        Active SSH Sessions
+                    </dt>
+                    <dd class="flex items-baseline">
+                        <div class="text-2xl font-semibold text-white">
+                            {{ active_sessions_count }}
+                        </div>
+                        <div class="ml-2 flex items-baseline text-sm font-semibold text-green-100">
+                            <span class="bg-white text-green-800 px-2 py-1 rounded-full text-xs">
+                                {{ total_sessions_count }} Total
+                            </span>
+                        </div>
+                    </dd>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white px-5 py-3">
+            <a href="{% url 'admin:endpoints_sshsession_changelist' %}" class="text-sm font-medium text-indigo-600 hover:text-indigo-900 truncate">
+                View all sessions
+            </a>
+        </div>
+    </div>
+
+    <!-- SSH Commands Card -->
+    <div class="bg-white overflow-hidden shadow rounded-lg">
+        <div class="p-5 bg-yellow-600">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 bg-white p-3 rounded-md">
+                    <svg class="h-8 w-8 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                </div>
+                <div class="ml-5 w-0 flex-1">
+                    <dt class="text-lg font-medium text-white truncate">
+                        Commands Executed
+                    </dt>
+                    <dd class="flex items-baseline">
+                        <div class="text-2xl font-semibold text-white">
+                            {{ commands_count }}
+                        </div>
+                        <div class="ml-2 flex items-baseline text-sm font-semibold text-yellow-100">
+                            <span class="bg-white text-yellow-800 px-2 py-1 rounded-full text-xs">
+                                Today: {{ commands_today_count }}
+                            </span>
+                        </div>
+                    </dd>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white px-5 py-3">
+            <a href="{% url 'admin:endpoints_sshcommand_changelist' %}" class="text-sm font-medium text-indigo-600 hover:text-indigo-900 truncate">
+                View command history
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="mt-8">
+    <h2 class="text-lg leading-6 font-medium text-gray-900 mb-4">Recent Activity</h2>
+    <div class="bg-white shadow overflow-hidden sm:rounded-md">
+        <ul class="divide-y divide-gray-200">
+            {% for session in recent_sessions %}
+            <li>
+                <a href="{% url 'admin:endpoints_sshsession_change' session.id %}" class="block hover:bg-gray-50">
+                    <div class="px-4 py-4 sm:px-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-indigo-600 truncate">
+                                    {{ session.user.username }} connected to {{ session.endpoint.name }}
+                                </p>
+                                <p class="text-sm text-gray-500">
+                                    {{ session.commands_count }} commands executed
+                                </p>
+                            </div>
+                            <div class="ml-2 flex-shrink-0 flex">
+                                {% if session.is_active %}
+                                <p class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                    Active
+                                </p>
+                                {% else %}
+                                <p class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                                    Ended
+                                </p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="mt-2 sm:flex sm:justify-between">
+                            <div class="sm:flex">
+                                <p class="flex items-center text-sm text-gray-500">
+                                    <svg class="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                    Started {{ session.started_at|date:"M d, Y H:i" }}
+                                </p>
+                            </div>
+                            {% if session.duration %}
+                            <div class="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
+                                <svg class="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Duration: {{ session.duration }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </a>
+            </li>
+            {% empty %}
+            <li class="px-4 py-4 sm:px-6 text-center text-gray-500">
+                No recent SSH sessions found.
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="mt-8">
+    <h2 class="text-lg leading-6 font-medium text-gray-900 mb-4">Quick Actions</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <a href="{% url 'endpoint-list' %}" class="bg-white overflow-hidden shadow rounded-lg p-6 hover:bg-gray-50 flex items-center">
+            <svg class="h-8 w-8 text-indigo-600 mr-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            <div>
+                <p class="text-lg font-medium text-gray-900">Launch Terminal</p>
+                <p class="text-sm text-gray-500">Connect to an endpoint</p>
+            </div>
+        </a>
+        
+        <a href="{% url 'admin:endpoints_endpoint_add' %}" class="bg-white overflow-hidden shadow rounded-lg p-6 hover:bg-gray-50 flex items-center">
+            <svg class="h-8 w-8 text-indigo-600 mr-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            <div>
+                <p class="text-lg font-medium text-gray-900">Add Endpoint</p>
+                <p class="text-sm text-gray-500">Register a new server</p>
+            </div>
+        </a>
+        
+        <a href="{% url 'admin:endpoints_endpointgroup_add' %}" class="bg-white overflow-hidden shadow rounded-lg p-6 hover:bg-gray-50 flex items-center">
+            <svg class="h-8 w-8 text-indigo-600 mr-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+            <div>
+                <p class="text-lg font-medium text-gray-900">Create Group</p>
+                <p class="text-sm text-gray-500">Organize endpoints</p>
+            </div>
+        </a>
+        
+        <a href="{% url 'admin:endpoints_tag_add' %}" class="bg-white overflow-hidden shadow rounded-lg p-6 hover:bg-gray-50 flex items-center">
+            <svg class="h-8 w-8 text-indigo-600 mr-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+            </svg>
+            <div>
+                <p class="text-lg font-medium text-gray-900">Create Tag</p>
+                <p class="text-sm text-gray-500">Add categorization</p>
+            </div>
+        </a>
+    </div>
+</div>
+{% endblock %}
